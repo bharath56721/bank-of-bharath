@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bank of Bharath</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#14213d;--mute:#5b6475;--pri:#0b3d91;--pri2:#1e63d6;--ok:#12805c;--bad:#c62828;--line:#dde3ee}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1424;--card:#16203a;--ink:#e8edf8;--mute:#9aa6c2;--pri:#5b9bff;--ok:#3ecf9e;--bad:#ff6b6b;--line:#273354}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:linear-gradient(135deg,#0b3d91,#1e63d6);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:1.25rem}
+main{max-width:900px;margin:0 auto;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+.auth{max-width:440px;margin:30px auto}
+.tabs,.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.tabs button,.nav button{flex:1 1 110px;padding:10px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;cursor:pointer;font-weight:600}
+.on{background:var(--pri)!important;color:#fff!important;border-color:var(--pri)!important}
+label{display:block;font-size:.82rem;color:var(--mute);margin:12px 0 4px}
+input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);font-size:1rem}
+.btn{margin-top:18px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--pri2);color:#fff;font-size:1rem;font-weight:600;cursor:pointer}
+.btn.danger{background:var(--bad)}
+#logout{width:auto;margin:0;padding:8px 14px;background:transparent;border:1px solid #fff}
+.bal{font-size:2.2rem;font-weight:700;margin:4px 0}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.cr{color:var(--ok);font-weight:600}.dr{color:var(--bad);font-weight:600}
+.mute{color:var(--mute);font-size:.85rem}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><h1>Bank of Bharath</h1><button class="btn hide" id="logout">Logout</button></header>
+<main>
+<section id="authView" class="card auth">
+<div class="tabs"><button id="tLogin" class="on">Login</button><button id="tReg">Register</button></div>
+<div id="loginForm">
+<label>Email or account number</label><input id="lId">
+<label>Password</label><input id="lPw" type="password">
+<button class="btn" id="doLogin">Login</button>
+</div>
+<div id="regForm" class="hide">
+<label>Full name</label><input id="rName">
+<label>Email</label><input id="rEmail" type="email">
+<label>Phone</label><input id="rPhone" type="tel">
+<label>Password (min 8 characters)</label><input id="rPw" type="password">
+<label>Opening deposit (₹)</label><input id="rDep" type="number" min="0" value="1000">
+<button class="btn" id="doReg">Create account</button>
+</div>
+</section>
+
+<section id="appView" class="hide">
+<div class="nav" id="nav">
+<button data-v="dash" class="on">Dashboard</button>
+<button data-v="transfer">Transfer</button>
+<button data-v="profile">Profile</button>
+<button data-v="pass">Password</button>
+<button data-v="del">Delete account</button>
+</div>
+<div id="v-dash" class="card">
+<div class="mute">Available balance</div>
+<div class="bal" id="bal"></div>
+<div class="mute" id="accInfo"></div>
+<h3>Recent transactions</h3>
+<div id="txns"></div>
+</div>
+<div id="v-transfer" class="card hide">
+<h3>Transfer money</h3>
+<label>Recipient account number</label><input id="tAcc">
+<label>Amount (₹)</label><input id="tAmt" type="number" min="1">
+<label>Remark (optional)</label><input id="tNote" maxlength="60">
+<label>Confirm with your password</label><input id="tPw" type="password">
+<button class="btn" id="doTransfer">Send money</button>
+</div>
+<div id="v-profile" class="card hide">
+<h3>Update profile</h3>
+<label>Full name</label><input id="pName">
+<label>Email</label><input id="pEmail" type="email">
+<label>Phone</label><input id="pPhone" type="tel">
+<button class="btn" id="doProfile">Save changes</button>
+</div>
+<div id="v-pass" class="card hide">
+<h3>Change password</h3>
+<label>Current password</label><input id="cOld" type="password">
+<label>New password</label><input id="cNew" type="password">
+<label>Confirm new password</label><input id="cNew2" type="password">
+<button class="btn" id="doPass">Update password</button>
+</div>
+<div id="v-del" class="card hide">
+<h3>Delete account</h3>
+<p class="mute">This permanently removes your account and transaction history.</p>
+<label>Enter your password</label><input id="dPw" type="password">
+<label>Type DELETE to confirm</label><input id="dConf">
+<button class="btn danger" id="doDelete">Delete my account</button>
+</div>
+</section>
+</main>
+<div id="toast"></div>
+<script>
+const $=i=>document.getElementById(i);
+const tk=()=>sessionStorage.getItem("bob_token");
+const money=n=>"₹"+Number(n).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};
+let tt;
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),3200)}
+async function api(path,method="GET",body){
+const r=await fetch("/api"+path,{method,headers:{"Content-Type":"application/json",...(tk()?{Authorization:"Bearer "+tk()}:{})},body:body?JSON.stringify(body):undefined});
+let d=null;try{d=await r.json()}catch(e){}
+if(r.status===401&&tk()){logout();throw new Error("Session expired, please login again")}
+if(!r.ok)throw new Error((d&&d.message)||"Request failed");
+return d;
+}
+const run=fn=>async()=>{try{await fn()}catch(e){toast(e.message)}};
+function showAuth(a){$("authView").classList.toggle("hide",!a);$("appView").classList.toggle("hide",a);$("logout").classList.toggle("hide",a)}
+function logout(){sessionStorage.removeItem("bob_token");showAuth(true)}
+async function view(v){
+document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+["dash","transfer","profile","pass","del"].forEach(x=>$("v-"+x).classList.toggle("hide",x!==v));
+if(v==="dash"){
+const a=await api("/account/me");
+$("bal").textContent=money(a.balance);
+$("accInfo").textContent="Account "+a.accountNumber+" · "+a.name;
+const t=await api("/account/transactions");
+$("txns").innerHTML=t.length?t.map(x=>'<div class="row"><div><strong>'+esc(x.description)+'</strong><div class="mute">'+new Date(x.createdAt).toLocaleString()+'</div></div><div class="'+(x.type==="CR"?"cr":"dr")+'">'+(x.type==="CR"?"+":"−")+money(x.amount)+'</div></div>').join(""):'<div class="mute">No transactions yet.</div>';
+}
+if(v==="profile"){const a=await api("/account/me");$("pName").value=a.name;$("pEmail").value=a.email;$("pPhone").value=a.phone}
+}
+async function enter(token){sessionStorage.setItem("bob_token",token);showAuth(false);await view("dash")}
+$("tLogin").onclick=()=>{$("tLogin").classList.add("on");$("tReg").classList.remove("on");$("loginForm").classList.remove("hide");$("regForm").classList.add("hide")};
+$("tReg").onclick=()=>{$("tReg").classList.add("on");$("tLogin").classList.remove("on");$("regForm").classList.remove("hide");$("loginForm").classList.add("hide")};
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=run(()=>view(b.dataset.v)));
+$("logout").onclick=()=>{logout();toast("Logged out")};
+$("doLogin").onclick=run(async()=>{const r=await api("/auth/login","POST",{id:$("lId").value,password:$("lPw").value});$("lPw").value="";await enter(r.token)});
+$("doReg").onclick=run(async()=>{const r=await api("/auth/register","POST",{name:$("rName").value,email:$("rEmail").value,phone:$("rPhone").value,password:$("rPw").value,deposit:parseFloat($("rDep").value||"0")});toast("Account created: "+r.accountNumber);await enter(r.token)});
+$("doTransfer").onclick=run(async()=>{await api("/account/transfer","POST",{toAccount:$("tAcc").value,amount:parseFloat($("tAmt").value),remark:$("tNote").value,password:$("tPw").value});["tAcc","tAmt","tNote","tPw"].forEach(i=>$(i).value="");toast("Transfer successful");await view("dash")});
+$("doProfile").onclick=run(async()=>{await api("/account/profile","PUT",{name:$("pName").value,email:$("pEmail").value,phone:$("pPhone").value});toast("Profile updated")});
+$("doPass").onclick=run(async()=>{if($("cNew").value!==$("cNew2").value)throw new Error("New passwords do not match");await api("/account/password","PUT",{currentPassword:$("cOld").value,newPassword:$("cNew").value});["cOld","cNew","cNew2"].forEach(i=>$(i).value="");toast("Password updated")});
+$("doDelete").onclick=run(async()=>{if($("dConf").value!=="DELETE")throw new Error("Type DELETE to confirm");await api("/account","DELETE",{password:$("dPw").value});$("dPw").value="";$("dConf").value="";logout();toast("Account deleted")});
+if(tk())run(()=>enter(tk()))();else showAuth(true);
+</script>
+</body>
+</html>
